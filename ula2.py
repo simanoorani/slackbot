@@ -12,7 +12,7 @@ ula_id = None
 # constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
 #COMMANDS = ["answer","search"]
-botTriggers=['how to','what is','where','can','does anyone know','what','how is']
+botTriggers=['how to','what is','where','can','does anyone know','what','how is','how']
 #MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 keywordDict = {'quest365': 'This is our website that has all the information about github',
           'icdx': "icdx is .. and it does ... and blah blah blah"}
@@ -70,11 +70,11 @@ def handle_command(command, channel):
     #default_response = "Not sure what you mean. Try starting your sentence with *{}*.".format(EXAMPLE_COMMAND)
     # Finds and executes the given command, filling in response
     # extract content from the message
-    command = command.replace('{^\w\s]','')
-    stop = stopwords.words('english')
-    command = lambda x: " ".join(x for x in x.split() if x not in stop)
+    #command = command.replace('{^\w\s]','')
+    #stop = stopwords.words('english')
+    #command = lambda x: " ".join(x for x in x.split() if x not in stop)
     response =[]
-    command = str(command)
+    #command = str(command)
 
     for word in command.split():
         if word in keywordDict.keys():
