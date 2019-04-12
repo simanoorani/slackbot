@@ -14,7 +14,7 @@ RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
 #COMMANDS = ["answer","search"]
 botTriggers=['how to','what is','where','can','does anyone know','what','how is','how']
 #MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
-keywordDict = {'quest365': 'This is our website that has all the information about github',
+keywordDict = {'quest365': 'This is our website that has all the information about that project',
           'icdx': "icdx is .. and it does ... and blah blah blah"}
 def parse_bot_commands(slack_events):
     """
@@ -25,12 +25,12 @@ def parse_bot_commands(slack_events):
     for event in slack_events:
         if event["type"] == "message" and not "subtype" in event:
             message = event["text"].lower()
-
+            user_id = event["user"]
             # Splitting user's message for bot triggers
             result = None
             for word in message.split():
                 if word in botTriggers:
-                    return message, event["channel"]
+                    return message, user_id, event["channel"]
                     break
                 else:
                     pass
@@ -44,7 +44,7 @@ def parse_bot_commands(slack_events):
             #else:
             #   return event['channel'], message.strip()
 
-    return None, None
+    return None, None, None
     #for event in slack_events:
      #   if event["type"] == "message" and not "subtype" in event:
      #       user_id, message = parse_direct_mention(event["text"])
@@ -61,7 +61,7 @@ def parse_direct_mention(message_text):
     # the first group contains the username, the second group contains the remaining message
     return (matches.group(1), matches.group(2).strip()) if matches else (None, None)
 
-def handle_command(command, channel):
+def handle_command(command, user_id, channel):
     """
         Executes bot command if the command is known
     """
@@ -81,7 +81,7 @@ def handle_command(command, channel):
             response.append(keywordDict.get(word))
         else:
             pass
-    response = '.'.join(response)
+    response = "<@{}> ".format(user_id)+ '.'.join(response)
     # This is where you start to implement more commands!
     
 
@@ -104,9 +104,9 @@ if __name__ == "__main__":
         # Read bot's user ID by calling Web API method `auth.test`
         #ula_id = slack_client.api_call("auth.test")["user_id"]
         while True:
-            command, channel = parse_bot_commands(slack_client.rtm_read())
+            command, user_id, channel = parse_bot_commands(slack_client.rtm_read())
             if command:
-                handle_command(command, channel)
+                handle_command(command, user_id, channel)
             time.sleep(RTM_READ_DELAY)
     else:
         print("Connection failed. Exception traceback printed above.")
