@@ -34,7 +34,6 @@ def parse_bot_commands(slack_events):
                     break
                 else:
                     pass
-
             
             #check = set(map(lambda x: x.strip(), message.split(',')))
             # checking if message/s are in bot triggers

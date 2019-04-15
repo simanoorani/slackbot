@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/snoora529/Documents/Projects/slackbot/model.tflearn"
+all_model_checkpoint_paths: "/Users/snoora529/Documents/Projects/slackbot/model.tflearn"
