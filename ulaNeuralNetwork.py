@@ -2,7 +2,7 @@
 # 04/11/2019
 # AUTHOR : Sima Noorani
 """ 
-    This slackbot answers provides the appropriate resposone for frequently asked general question. 
+    This slackbot provides the appropriate resposone for frequently asked general question. 
     it is build based on a neural network that is able to recognize alternate wordings of the same question.
 """
 
