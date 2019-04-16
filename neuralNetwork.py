@@ -1,64 +1,64 @@
-# things we need for NLP
+#04/11/2019
+
+# NLP
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
 stemmer = LancasterStemmer()
 
-# things we need for Tensorflow
+# Tenserflow Libraries
 import numpy as np
 import tflearn
 import tensorflow as tf
 import random
-#import the chat bot's intents file
+#import the chat bot's questions file
 import json
-with open('intents.json') as json_data:
-    intents = json.load(json_data)
+with open('questions.json') as json_data:
+    questions = json.load(json_data)
 
-#let's orginize documents, words and classification classes
+#organize documents, words, classification classes
 words = []
 classes = []
 documents = []
 ignore_words = ['?']
-# loop through each sentence in our intents patterns
-for intent in intents['intents']:
-    for pattern in intent['patterns']:
+# loop through each sentence in our questions patterns
+for question in questions['questions']:
+    for pattern in question['patterns']:
         # tokenize each word in the sentence
         w = nltk.word_tokenize(pattern)
-        # add to our words list
+        # add to words list
         words.extend(w)
-        # add to documents in our corpus
-        documents.append((w, intent['tag']))
-        # add to our classes list
-        if intent['tag'] not in classes:
-            classes.append(intent['tag'])
+        # add to documents in corpus
+        documents.append((w, question['tag']))
+        # add classes list
+        if question['tag'] not in classes:
+            classes.append(question['tag'])
 
 # stem and lower each word and remove duplicates
 words = [stemmer.stem(w.lower()) for w in words if w not in ignore_words]
 words = sorted(list(set(words)))
-
-# remove duplicates
 classes = sorted(list(set(classes)))
 
-print (len(documents), "documents")
-print (len(classes), "classes", classes)
-print (len(words), "unique stemmed words", words)
+#print (len(documents), "documents")
+#print (len(classes), "classes", classes)
+#print (len(words), "unique stemmed words", words)
 
 ######################################################
 
-# create our training data
+# create training data
 training = []
 output = []
-# create an empty array for our output
+# create an empty array for output
 output_empty = [0] * len(classes)
 
 # training set, bag of words for each sentence
 for doc in documents:
-    # initialize our bag of words
+    # initialize bag of words
     bag = []
     # list of tokenized words for the pattern
     pattern_words = doc[0]
     # stem each word
     pattern_words = [stemmer.stem(word.lower()) for word in pattern_words]
-    # create our bag of words array
+    # create bag of words array
     for w in words:
         bag.append(1) if w in pattern_words else bag.append(0)
 	# output is a '0' for each tag and '1' for current tag
@@ -67,11 +67,11 @@ for doc in documents:
 
     training.append([bag, output_row])
 
-# shuffle our features and turn into np.array
+# shuffle features and turn into np.array
 random.shuffle(training)
 training = np.array(training)
 
-# create train and test lists
+# create train and test data
 train_x = list(training[:,0])
 train_y = list(training[:,1])
 
@@ -80,8 +80,8 @@ train_y = list(training[:,1])
 tf.reset_default_graph()
 # Build neural network
 net = tflearn.input_data(shape=[None, len(train_x[0])])
-net = tflearn.fully_connected(net, 8)
-net = tflearn.fully_connected(net, 8)
+net = tflearn.fully_connected(net, 20)
+net = tflearn.fully_connected(net, 20)
 net = tflearn.fully_connected(net, len(train_y[0]), activation='softmax')
 net = tflearn.regression(net)
 
@@ -92,6 +92,6 @@ model.fit(train_x, train_y, n_epoch=1000, batch_size=8, show_metric=True)
 model.save('model.tflearn')
 
 ######################################################
-# save all of our data structures
+# save all data structures
 import pickle
 pickle.dump( {'words':words, 'classes':classes, 'train_x':train_x, 'train_y':train_y}, open( "training_data", "wb" ) )

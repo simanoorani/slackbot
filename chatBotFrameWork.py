@@ -24,8 +24,8 @@ with open('intents.json') as json_data:
 
 # Build neural network
 net = tflearn.input_data(shape=[None, len(train_x[0])])
-net = tflearn.fully_connected(net, 8)
-net = tflearn.fully_connected(net, 8)
+net = tflearn.fully_connected(net, 20)
+net = tflearn.fully_connected(net, 20)
 net = tflearn.fully_connected(net, len(train_y[0]), activation='softmax')
 net = tflearn.regression(net)
 
@@ -62,7 +62,7 @@ model.load('./model.tflearn')
 # create a data structure to hold user context
 context = {}
 
-ERROR_THRESHOLD = 0.7
+ERROR_THRESHOLD = 0.8
 def classify(sentence):
     # generate probabilities from the model
     results = model.predict([bow(sentence, words)])[0]

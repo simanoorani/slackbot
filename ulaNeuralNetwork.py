@@ -1,20 +1,30 @@
+# SlackBot Endpoint Security Team
+# 04/11/2019
+# AUTHOR : Sima Noorani
+""" 
+    This slackbot answers provides the appropriate resposone for frequently asked general question. 
+    it is build based on a neural network that is able to recognize alternate wordings of the same question.
+"""
+
+
+#import necessary libraries
 import os
 import time
 import re
 from slackclient import SlackClient
 from nltk.corpus import stopwords
-#things we need for NLP
+#NLP
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
 stemmer = LancasterStemmer()
 
-# things we need for Tensorflow
+# Libraries for TenserFlow
 import numpy as np
 import tflearn
 import tensorflow as tf
 import random
 
-# restore all of our data structures
+#Restore previously built data structures
 import pickle
 data = pickle.load( open( "training_data", "rb" ) )
 words = data['words']
@@ -22,68 +32,46 @@ classes = data['classes']
 train_x = data['train_x']
 train_y = data['train_y']
 
-# import our chat-bot intents file
+#This intent file hold all the questions/answers that the bot is build to answer
 import json
-with open('intents.json') as json_data:
-    intents = json.load(json_data)
+with open('questions.json') as json_data:
+    questions = json.load(json_data)
 
-# Build neural network
+# Building Neural Network
 net = tflearn.input_data(shape=[None, len(train_x[0])])
-net = tflearn.fully_connected(net, 8)
-net = tflearn.fully_connected(net, 8)
+net = tflearn.fully_connected(net, 20)
+net = tflearn.fully_connected(net, 20)
 net = tflearn.fully_connected(net, len(train_y[0]), activation='softmax')
 net = tflearn.regression(net)
 
-# Define model and setup tensorboard
+# Setting up Tensorboar/defining model
 model = tflearn.DNN(net, tensorboard_dir='tflearn_logs')
 
-# instantiate Slack client
+# Instantiate our slackClient
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
+
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 ula_id = None
 
 # constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
-#COMMANDS = ["answer","search"]
-#botTriggers=['how to','what is','where','can','does anyone know','what','how is','how']
-#MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
-#keywordDict = {'quest365': 'This is our website that has all the information about that project',
- #         'icdx': "icdx is .. and it does ... and blah blah blah"}
+MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
+
 def parse_bot_commands(slack_events):
     """
-        Parses a list of events coming from the Slack RTM API to find bot commands.
-        If a bot command is found, this function returns a tuple of command and channel.
-        If its not found, then this function returns None, None.
+        Parses a list of events coming from the Slack RTM API
+        It returns a tuple of the message, user id of the person that sent the message, and channel.
+        If event not found, then this function returns None, None, None.
     """
     for event in slack_events:
         if event["type"] == "message" and not "subtype" in event:
             message = event["text"].lower()
             user_id = event["user"]
             return message, user_id, event['channel']
-            # Splitting user's message for bot triggers
-            result = None
-            #for word in message.split():
-            #    if word in botTriggers:
-            #        return message, user_id, event["channel"]
-            #        break
-            #    else:
-            #        pass
             
-            #check = set(map(lambda x: x.strip(), message.split(',')))
-            # checking if message/s are in bot triggers
-            #result =  all(elem in botTriggers for elem in check)
-            #if result:
-            #   return message, event["channel"]
-            #else:
-            #   return event['channel'], message.strip()
-
+            result = None
     return None, None, None
-    #for event in slack_events:
-     #   if event["type"] == "message" and not "subtype" in event:
-     #       user_id, message = parse_direct_mention(event["text"])
-      #      if user_id == ula_id:
-      #          return message, event["channel"]
-    #return None, None
+    
 
 def parse_direct_mention(message_text):
     """
@@ -95,14 +83,19 @@ def parse_direct_mention(message_text):
     return (matches.group(1), matches.group(2).strip()) if matches else (None, None)
 
 def clean_up_sentence(sentence):
+    """
+        Cleans up each sentence and returns stem words
+    """
     # tokenize the pattern
     sentence_words = nltk.word_tokenize(sentence)
     # stem each word
     sentence_words = [stemmer.stem(word.lower()) for word in sentence_words]
     return sentence_words
 
-# return bag of words array: 0 or 1 for each word in the bag that exists in the sentence
 def bow(sentence, words, show_details=False):
+    """
+        returns bag of words array: 0 or 1 for each word in the bag that exists in the sentence
+    """
     # tokenize the pattern
     sentence_words = clean_up_sentence(sentence)
     # bag of words
@@ -117,28 +110,34 @@ def bow(sentence, words, show_details=False):
     return(np.array(bag))
 
 
-# load our saved model
+# load saved model
 model.load('./model.tflearn')
-
 
 # create a data structure to hold user context
 context = {}
 
-ERROR_THRESHOLD = 0.50
+ERROR_THRESHOLD = 0.8
 def classify(sentence):
-    # generate probabilities from the model
+    """
+        This function generates probabilities from the model
+        filters out predictions below a threshold
+        sorts by strength of probability
+        and returns tuple of intent and probability
+    """
     results = model.predict([bow(sentence, words)])[0]
-    # filter out predictions below a threshold
     results = [[i,r] for i,r in enumerate(results) if r>ERROR_THRESHOLD]
-    # sort by strength of probability
     results.sort(key=lambda x: x[1], reverse=True)
     return_list = []
     for r in results:
         return_list.append((classes[r[0]], r[1]))
-    # return tuple of intent and probability
     return return_list
 
 def response(sentence, user_id, channel):
+    """
+        This function finds the matching intent tag if there is a classification.
+        It returns the response associated with the intent tag.
+        It then Sends the response back to the channel.
+    """
     response = None
     results = classify(sentence)
     print(results)
@@ -146,22 +145,14 @@ def response(sentence, user_id, channel):
     if results:
         # loop as long as there are matches to process
         while results:
-            for i in intents['intents']:
+            for i in questions['questions']:
                 # find a tag matching the first result
                 if i['tag'] == results[0][0]:
-                    # set context for this intent if necessary
-                    if 'context_set' in i:
-                        #if show_details: print ('context:', i['context_set'])
-                        context[user_id] = i['context_set']
 
-                    # check if this intent is contextual and applies to this user's conversation
-                    #if not 'context_filter' in i or \
-                    #    (user_id in context and 'context_filter' in i and i['context_filter'] == context[user_id]):
-                        #if show_details: print ('tag:', i['tag'])
-                        # a random response from the intent
                     response = "<@{}> ".format(user_id) + random.choice(i['responses'])
 
             results.pop(0) 
+
     slack_client.api_call(
     "chat.postMessage",
     channel=channel,
@@ -169,50 +160,11 @@ def response(sentence, user_id, channel):
     )         
 
 
-
-
-def handle_command(command, user_id, channel):
-    """
-        Executes bot command if the command is known
-    """
-
-    # Default response is help text for the user
-    #default_response = "Not sure what you mean. Try starting your sentence with *{}*.".format(EXAMPLE_COMMAND)
-    # Finds and executes the given command, filling in response
-    # extract content from the message
-    #command = command.replace('{^\w\s]','')
-    #stop = stopwords.words('english')
-    #command = lambda x: " ".join(x for x in x.split() if x not in stop)
-    response =[]
-    #command = str(command)
-
-    for word in command.split():
-        if word in keywordDict.keys():
-            response.append(keywordDict.get(word))
-        else:
-            pass
-    response = "<@{}> ".format(user_id)+ '.'.join(response)
-    # This is where you start to implement more commands!
-    
-
-    #if 'HELLO' in command.upper().split() or 'HI' in command.upper().split():
-    #	response = 'hello @username'
-    #if command.startswith(EXAMPLE_COMMAND):
-    #   if 'quest365'.upper() in command.upper():
-    #    	response = 'Everything you need to know about that project can be found here: www.quest365.com'
-    # Sends the response back to the channel
-
-    slack_client.api_call(
-        "chat.postMessage",
-        channel=channel,
-        text=response,
-    )
-
 if __name__ == "__main__":
     if slack_client.rtm_connect(with_team_state=False):
         print("Ula Bot connected and running!")
         # Read bot's user ID by calling Web API method `auth.test`
-        #ula_id = slack_client.api_call("auth.test")["user_id"]
+        ula_id = slack_client.api_call("auth.test")["user_id"]
         while True:
             command, user_id, channel = parse_bot_commands(slack_client.rtm_read())
             if command:
